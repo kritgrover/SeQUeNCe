@@ -1,0 +1,11 @@
+# Tested environment for this example and its author-parity checks.
+numpy==2.5.4
+networkx==3.7
+matplotlib==3.11.2
+scipy==1.18.1
+qutip==5.3.1
+qutip-qip==0.4.2
+lazy-loader==0.6
+gmpy2==2.3.2
+stim==1.16.0
+pytest==9.2.0
