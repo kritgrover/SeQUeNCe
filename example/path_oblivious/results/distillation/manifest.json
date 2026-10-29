@@ -1,0 +1,87 @@
+{
+  "source_commit": "7c57be549c275509b1674aaab3f7341c955041db",
+  "source_url": "https://github.com/vlmutolo/quantum-network/tree/7c57be549c275509b1674aaab3f7341c955041db/simulation-final",
+  "sweep": "distillation",
+  "seed": 271,
+  "max_steps_override": null,
+  "selected_case_indices": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "python": "3.12.14",
+  "packages": {
+    "numpy": "2.5.4",
+    "networkx": "3.7",
+    "matplotlib": "3.11.2",
+    "scipy": "1.18.1",
+    "qutip": "5.3.1",
+    "qutip-qip": "0.4.2",
+    "stim": "1.16.0"
+  },
+  "time_unit": "one author loop iteration per SeQUeNCe tick; no physical calibration",
+  "runtime_accommodation": "finite profile interprets source lowercase false as False",
+  "cases": [
+    {
+      "index": 0,
+      "profile": "distillation",
+      "graph_type": "wrap_grid_overlay",
+      "nodes": 25,
+      "distillation_pairs": 1,
+      "consumer_count": 35,
+      "topology_group": "distillation:wrap_grid_overlay",
+      "output_csv": "wrap_grid_overlay_distillation_metrics_output-1.csv",
+      "x_column": "distillation pairs",
+      "x_value": 1,
+      "generation_rate": 40,
+      "swap_rate": 200,
+      "time_steps": 5000000,
+      "source_script": "infinite-swapping.py",
+      "simulation_seed": 2907903773,
+      "requested_steps": 5000000,
+      "executed_steps": 7600,
+      "stop_reason": "author_stabilization",
+      "elapsed_seconds": 56.289,
+      "metrics": {
+        "distillation pairs": 1,
+        "total swaps": 65787,
+        "optimal direct path sum": 17713,
+        "worst direct path sum": 17713,
+        "total pairs consumed": 6576,
+        "total bell pairs": 4237
+      }
+    },
+    {
+      "index": 1,
+      "profile": "distillation",
+      "graph_type": "wrap_grid_overlay",
+      "nodes": 25,
+      "distillation_pairs": 2,
+      "consumer_count": 35,
+      "topology_group": "distillation:wrap_grid_overlay",
+      "output_csv": "wrap_grid_overlay_distillation_metrics_output-1.csv",
+      "x_column": "distillation pairs",
+      "x_value": 2,
+      "generation_rate": 40,
+      "swap_rate": 200,
+      "time_steps": 5000000,
+      "source_script": "infinite-swapping.py",
+      "simulation_seed": 2871921107,
+      "requested_steps": 5000000,
+      "executed_steps": 13200,
+      "stop_reason": "author_stabilization",
+      "elapsed_seconds": 152.211,
+      "metrics": {
+        "distillation pairs": 2,
+        "total swaps": 128421,
+        "optimal direct path sum": 20974,
+        "worst direct path sum": 39058,
+        "total pairs consumed": 865,
+        "total bell pairs": 8695
+      }
+    }
+  ],
+  "validation_status": "Stopped after two complete cases; remaining sweep cases were not completed."
+}

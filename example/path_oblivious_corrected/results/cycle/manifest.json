@@ -1,0 +1,268 @@
+{
+  "experiment": "controlled-local-rule-comparison-v1",
+  "status": "completed",
+  "seed": 271,
+  "replay_directory": null,
+  "distillation_pairs": [
+    1,
+    2,
+    3
+  ],
+  "replicates": 5,
+  "horizon": 1000,
+  "checkpoint_interval": 100,
+  "minimum_completed_requests": 100,
+  "warm_up": "none; cumulative swaps include work retained in final inventory",
+  "time_unit": "iteration; not calibrated seconds",
+  "stopping": "fixed common horizon; author ratio stabilization disabled for both dynamics",
+  "confidence_interval": "two-sided 95% Student t across independent replicates; paired differences also saved",
+  "undefined_policy": "JSON null / CSV blank; group mean and CI undefined if any member undefined or unfinished",
+  "low_completion_policy": "retain observations and flag insufficient completions; threshold is not precision certification",
+  "streams": "recorded generation/event arrays and shared FIFO request tape; node passes keyed by iteration/pass so divergent passes cannot shift inputs",
+  "tie_breaking": "first minimum in existing set-neighbor combination order; original unchanged routine retains its original batching",
+  "metrics": {
+    "legacy_overhead": "executed swaps / sum(f[hops-1])",
+    "corrected_overhead": "executed swaps / sum(s_D(hops)); s_D(1)=0; s_D(h)=D*(1+s_D(floor(h/2))+s_D(ceil(h/2)))"
+  },
+  "interpretation": "local balancing heuristic, no global max-min or steady-state claim",
+  "workloads": [
+    {
+      "graph_type": "cycle",
+      "nodes": 25,
+      "rows": null,
+      "columns": null,
+      "consumer_policy": "fixed-35",
+      "consumer_count": 35,
+      "graph_seed": 1526892958,
+      "replicate": 0,
+      "scheduling": "generation-quiescent-fifo",
+      "generation_distribution": "Poisson, independent of D",
+      "batch_mean": 10.0,
+      "generation_rate": null,
+      "swap_rate": null,
+      "consumer_weights": "uniform integers 1..6; realized weights saved",
+      "input_file": "inputs/input-000.json"
+    },
+    {
+      "graph_type": "cycle",
+      "nodes": 25,
+      "rows": null,
+      "columns": null,
+      "consumer_policy": "fixed-35",
+      "consumer_count": 35,
+      "graph_seed": 2871921107,
+      "replicate": 1,
+      "scheduling": "generation-quiescent-fifo",
+      "generation_distribution": "Poisson, independent of D",
+      "batch_mean": 10.0,
+      "generation_rate": null,
+      "swap_rate": null,
+      "consumer_weights": "uniform integers 1..6; realized weights saved",
+      "input_file": "inputs/input-001.json"
+    },
+    {
+      "graph_type": "cycle",
+      "nodes": 25,
+      "rows": null,
+      "columns": null,
+      "consumer_policy": "fixed-35",
+      "consumer_count": 35,
+      "graph_seed": 3475781475,
+      "replicate": 2,
+      "scheduling": "generation-quiescent-fifo",
+      "generation_distribution": "Poisson, independent of D",
+      "batch_mean": 10.0,
+      "generation_rate": null,
+      "swap_rate": null,
+      "consumer_weights": "uniform integers 1..6; realized weights saved",
+      "input_file": "inputs/input-002.json"
+    },
+    {
+      "graph_type": "cycle",
+      "nodes": 25,
+      "rows": null,
+      "columns": null,
+      "consumer_policy": "fixed-35",
+      "consumer_count": 35,
+      "graph_seed": 1372226901,
+      "replicate": 3,
+      "scheduling": "generation-quiescent-fifo",
+      "generation_distribution": "Poisson, independent of D",
+      "batch_mean": 10.0,
+      "generation_rate": null,
+      "swap_rate": null,
+      "consumer_weights": "uniform integers 1..6; realized weights saved",
+      "input_file": "inputs/input-003.json"
+    },
+    {
+      "graph_type": "cycle",
+      "nodes": 25,
+      "rows": null,
+      "columns": null,
+      "consumer_policy": "fixed-35",
+      "consumer_count": 35,
+      "graph_seed": 2047583797,
+      "replicate": 4,
+      "scheduling": "generation-quiescent-fifo",
+      "generation_distribution": "Poisson, independent of D",
+      "batch_mean": 10.0,
+      "generation_rate": null,
+      "swap_rate": null,
+      "consumer_weights": "uniform integers 1..6; realized weights saved",
+      "input_file": "inputs/input-004.json"
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "r000-d1-original",
+      "file": "runs/r000-d1-original.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r000-d1-corrected",
+      "file": "runs/r000-d1-corrected.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r000-d2-original",
+      "file": "runs/r000-d2-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r000-d2-corrected",
+      "file": "runs/r000-d2-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r000-d3-original",
+      "file": "runs/r000-d3-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r000-d3-corrected",
+      "file": "runs/r000-d3-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r001-d1-original",
+      "file": "runs/r001-d1-original.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r001-d1-corrected",
+      "file": "runs/r001-d1-corrected.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r001-d2-original",
+      "file": "runs/r001-d2-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r001-d2-corrected",
+      "file": "runs/r001-d2-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r001-d3-original",
+      "file": "runs/r001-d3-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r001-d3-corrected",
+      "file": "runs/r001-d3-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r002-d1-original",
+      "file": "runs/r002-d1-original.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r002-d1-corrected",
+      "file": "runs/r002-d1-corrected.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r002-d2-original",
+      "file": "runs/r002-d2-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r002-d2-corrected",
+      "file": "runs/r002-d2-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r002-d3-original",
+      "file": "runs/r002-d3-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r002-d3-corrected",
+      "file": "runs/r002-d3-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r003-d1-original",
+      "file": "runs/r003-d1-original.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r003-d1-corrected",
+      "file": "runs/r003-d1-corrected.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r003-d2-original",
+      "file": "runs/r003-d2-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r003-d2-corrected",
+      "file": "runs/r003-d2-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r003-d3-original",
+      "file": "runs/r003-d3-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r003-d3-corrected",
+      "file": "runs/r003-d3-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r004-d1-original",
+      "file": "runs/r004-d1-original.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r004-d1-corrected",
+      "file": "runs/r004-d1-corrected.json",
+      "status": "completed_horizon"
+    },
+    {
+      "run_id": "r004-d2-original",
+      "file": "runs/r004-d2-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r004-d2-corrected",
+      "file": "runs/r004-d2-corrected.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r004-d3-original",
+      "file": "runs/r004-d3-original.json",
+      "status": "insufficient_completions"
+    },
+    {
+      "run_id": "r004-d3-corrected",
+      "file": "runs/r004-d3-corrected.json",
+      "status": "insufficient_completions"
+    }
+  ],
+  "failed_runs": 0
+}
