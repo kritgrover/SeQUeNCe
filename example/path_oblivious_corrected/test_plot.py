@@ -2,9 +2,13 @@
 
 import csv
 
+from matplotlib.figure import Figure
+from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 
+from . import plot
 from .plot import RAW_METRICS, SERIES, _draw_panel, plot_results, read_summary
 
 
@@ -72,3 +76,92 @@ def test_horizon_plots_use_cross_replicate_checkpoint_summaries(tmp_path):
     paths = plot_results(tmp_path)
     assert len(paths) == 9  # five primary plots plus two horizon metrics for each D
     assert sum(path.name.startswith("horizon_") for path in paths) == 4
+
+
+def test_dense_horizon_plots_keep_all_observations_in_bounded_images(tmp_path, monkeypatch):
+    # Five million iterations with checkpoints every 100 steps previously
+    # requested a 12.8-million-pixel-wide image. Exercise actual PNG rendering.
+    count = 50_000
+    group = ("cycle", "25", "", "", "generation-quiescent-fifo", "2")
+    missing_index, spike_index = 1234, 2345  # neither is a displayed table column
+    rows = []
+    for index in range(count):
+        for dynamics in ("original", "corrected"):
+            for metric in ("corrected_overhead", "remaining_inventory"):
+                missing = index == missing_index
+                mean = 40 if index == spike_index else 4
+                rows.append({
+                    "horizon": 100 * (index + 1), "dynamics": dynamics, "metric": metric,
+                    "mean": None if missing else mean,
+                    "ci_low": None if missing else mean - 1,
+                    "ci_high": None if missing else mean + 1,
+                    "n_total": 2, "n_finished": 2, "n_defined": 0 if missing else 2,
+                    "n_minimum_completed": 2,
+                })
+    monkeypatch.setattr(plot, "read_summary", lambda *args: {group: rows})
+    original_savefig = Figure.savefig
+    rendered = []
+
+    def check_and_save(fig, path, **kwargs):
+        ax, table_ax = fig.axes
+        assert fig.get_figwidth() * kwargs["dpi"] <= 3200
+        assert len(ax.lines) == 2
+        for line in ax.lines:
+            assert len(line.get_xdata()) == count
+            assert np.isnan(line.get_ydata()[missing_index])
+            assert line.get_ydata()[spike_index] == 40
+        ticks = ax.get_xticks()
+        assert len(ticks) <= 10
+        assert (ticks[0], ticks[-1]) == (100, 5_000_000)
+        assert 100 * (missing_index + 1) not in ticks
+        assert 100 * (spike_index + 1) not in ticks
+        cells = next(iter(table_ax.tables)).get_celld()
+        assert len({column for _, column in cells if column >= 0}) <= 10
+        # Missing off-table observations still have markers; their confidence
+        # bands also keep gaps and the off-table peak rather than being sampled.
+        bands = [item for item in ax.collections if hasattr(item, "get_paths")
+                 and len(item.get_paths()) == 2]
+        assert len(bands) == 2
+        for band in bands:
+            assert max(path.vertices[:, 1].max() for path in band.get_paths()) == 41
+        missing_markers = [item for item in ax.collections
+                           if item.get_offsets().shape == (1, 2)
+                           and abs(float(item.get_offsets()[0, 0]) - 123500) < 10]
+        assert len(missing_markers) == 2
+        assert any("All 50,000 checkpoints shown" in text.get_text() for text in fig.texts)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        title = next(text for text in fig.texts if text.get_text().startswith("Horizon sensitivity:"))
+        note = next(text for text in fig.texts if "All 50,000 checkpoints shown" in text.get_text())
+        assert not title.get_window_extent(renderer).overlaps(note.get_window_extent(renderer))
+        original_savefig(fig, path, **kwargs)
+        rendered.append(path)
+
+    monkeypatch.setattr(Figure, "savefig", check_and_save)
+    paths = plot.plot_horizon_sensitivity(tmp_path, tmp_path)
+    assert paths == rendered and len(paths) == 2
+    assert all(path.stat().st_size > 1000 for path in paths)
+
+
+@pytest.mark.parametrize("isolated_mean", [False, True])
+def test_dense_panel_preserves_isolated_observations_and_intervals(isolated_mean):
+    rows = []
+    for index in range(20):
+        rows.append({
+            "horizon": index + 1, "dynamics": "original", "metric": "corrected_overhead",
+            "mean": 4 if index == 5 or not isolated_mean else None,
+            "ci_low": 3 if index == 5 else None, "ci_high": 5 if index == 5 else None,
+            "n_total": 2, "n_finished": 2, "n_defined": 2 if index == 5 else 0,
+            "n_minimum_completed": 2,
+        })
+    fig, (ax, table_ax) = plt.subplots(2)
+    try:
+        _draw_panel(ax, table_ax, rows, (SERIES[1],), "Overhead", x_field="horizon", max_columns=10)
+        assert 6 not in ax.get_xticks()  # the lone CI is deliberately off-table
+        if isolated_mean:
+            assert 5 in ax.lines[0].get_markevery()
+        intervals = [item for item in ax.collections if isinstance(item, LineCollection)]
+        assert len(intervals) == 1
+        np.testing.assert_array_equal(intervals[0].get_segments(), [[[6, 3], [6, 5]]])
+    finally:
+        plt.close(fig)

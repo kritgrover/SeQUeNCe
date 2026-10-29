@@ -51,11 +51,17 @@ def create_graph(n, graph_type, consumer_count, *, seed=None, rows=None, columns
         nodes = [(i, j) for i in range(rows) for j in range(cols)]
         graph.add_nodes_from(nodes)
         edges = []
+        seen_edges = set()
         for i in range(rows):
             for j in range(cols):
                 current = (i, j)
-                edges.append((current, (i, (j + 1) % cols)))
-                edges.append((current, ((i + 1) % rows, j)))
+                for neighbor in ((i, (j + 1) % cols), ((i + 1) % rows, j)):
+                    physical_edge = frozenset((current, neighbor))
+                    if physical_edge not in seen_edges:
+                        seen_edges.add(physical_edge)
+                        edges.append((current, neighbor))
+        # A dimension of two visits each wrap edge twice. Shuffle each physical
+        # edge only once, retaining first-occurrence order for historical grids.
         rng.shuffle(edges)
         for u, v in edges:
             if not graph.has_edge(u, v):

@@ -77,6 +77,9 @@ choices include:
 - `--minimum-completed 100` and `--checkpoint-interval 100`. The threshold flags
   sparse completion data; meeting it does not certify precision.
 
+Each unordered physical grid edge appears once in the shuffled candidate list,
+including grids with two rows or two columns.
+
 Scheduling is explicit:
 
 - `--scheduling generation-quiescent-fifo` (default): one physical-edge generation
@@ -122,6 +125,9 @@ mean and interval remain undefined. Low-completion runs remain included and are
 flagged. A single replicate has no confidence interval. Plots show these counts,
 uncertainty, and missing estimates, including horizon sensitivity and inventory
 drift. `--output` can choose the plot directory; its default is `DATA/plots`.
+Dense horizon plots retain every checkpoint in their curves, shaded confidence
+bands, and missing-value markers, while limiting count tables and axis labels to
+ten checkpoints. The complete numerical data remain in `horizon_summary.csv`.
 
 ## Historical workload presets and metric-only runs
 

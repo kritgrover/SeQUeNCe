@@ -18,6 +18,7 @@ import numpy as np
 
 
 GROUP_FIELDS = ("graph_type", "nodes", "rows", "columns", "scheduling", "horizon")
+MAX_HORIZON_COLUMNS = 10
 RAW_METRICS = (
     ("total_swaps", "Executed swaps"),
     ("total_pairs_consumed", "Completed requests"),
@@ -90,8 +91,18 @@ def _count_text(row):
             + (", ".join(flags) if flags else "complete"))
 
 
-def _draw_panel(ax, table_ax, rows, series, ylabel, x_field="distillation_pairs"):
+def _isolated_indices(valid):
+    valid = np.asarray(valid, dtype=bool)
+    return np.flatnonzero(valid & ~np.r_[False, valid[:-1]] & ~np.r_[valid[1:], False])
+
+
+def _draw_panel(ax, table_ax, rows, series, ylabel, x_field="distillation_pairs",
+                max_columns=None):
     x_values = sorted({row[x_field] for row in rows})
+    dense = max_columns is not None and len(x_values) > max_columns
+    display_indices = (np.linspace(0, len(x_values) - 1, max_columns, dtype=int).tolist()
+                       if dense else list(range(len(x_values))))
+    display_values = [x_values[index] for index in display_indices]
     lookup = {(row[x_field], row["dynamics"], row["metric"]): row
               for row in rows}
     positions = np.asarray(x_values, dtype=float)
@@ -105,20 +116,46 @@ def _draw_panel(ax, table_ax, rows, series, ylabel, x_field="distillation_pairs"
         # The small positional offset distinguishes coincident points and bars.
         offset = (series_index - (len(series) - 1) / 2) * 0.055 * spacing
         x = positions + offset
+        marker_indices = display_indices
+        if dense:
+            # A singleton between missing means has no connecting line segment.
+            marker_indices = sorted(set(display_indices).union(_isolated_indices(np.isfinite(means))))
         ax.plot(x, means, marker="o", color=color, linestyle=linestyle,
-                linewidth=1.7, markersize=5, label=label)
-        for xi, row in zip(x, selected):
-            if row is None or row["mean"] is None:
-                ax.text(xi, 0.025 + 0.045 * series_index, "×", color=color,
-                        transform=ax.get_xaxis_transform(), ha="center", fontsize=13)
-            elif row["ci_low"] is not None and row["ci_high"] is not None:
-                lower = max(0.0, row["mean"] - row["ci_low"])
-                upper = max(0.0, row["ci_high"] - row["mean"])
-                ax.errorbar([xi], [row["mean"]], yerr=[[lower], [upper]],
-                            color=color, fmt="none", capsize=3)
-        table_cells.append([_count_text(row) for row in selected])
+                linewidth=1.7, markersize=5, markevery=marker_indices, label=label)
+        if dense:
+            # Keep every observation and uncertainty interval, but use vectorized
+            # bands/markers instead of one artist and table column per checkpoint.
+            has_ci = [row is not None and row["mean"] is not None
+                      and row["ci_low"] is not None and row["ci_high"] is not None
+                      for row in selected]
+            lower = [row["ci_low"] if valid else math.nan
+                     for row, valid in zip(selected, has_ci)]
+            upper = [row["ci_high"] if valid else math.nan
+                     for row, valid in zip(selected, has_ci)]
+            ax.fill_between(x, lower, upper, color=color, alpha=0.16)
+            # An isolated interval has no shaded area, so draw its full extent.
+            isolated_ci = _isolated_indices(has_ci)
+            if len(isolated_ci):
+                ax.vlines(x[isolated_ci], np.asarray(lower)[isolated_ci],
+                          np.asarray(upper)[isolated_ci], color=color, linewidth=1.5)
+            missing_x = x[~np.isfinite(means)]
+            if len(missing_x):
+                ax.scatter(missing_x, np.full(len(missing_x), 0.025 + 0.045 * series_index),
+                           marker="x", color=color, s=35,
+                           transform=ax.get_xaxis_transform())
+        else:
+            for xi, row in zip(x, selected):
+                if row is None or row["mean"] is None:
+                    ax.text(xi, 0.025 + 0.045 * series_index, "×", color=color,
+                            transform=ax.get_xaxis_transform(), ha="center", fontsize=13)
+                elif row["ci_low"] is not None and row["ci_high"] is not None:
+                    lower = max(0.0, row["mean"] - row["ci_low"])
+                    upper = max(0.0, row["ci_high"] - row["mean"])
+                    ax.errorbar([xi], [row["mean"]], yerr=[[lower], [upper]],
+                                color=color, fmt="none", capsize=3)
+        table_cells.append([_count_text(selected[index]) for index in display_indices])
         series_labels.append(label)
-    ax.set_xticks(positions, [str(value) for value in x_values])
+    ax.set_xticks(positions[display_indices], [str(value) for value in display_values])
     ax.set(xlabel=("Observation horizon (iterations)" if x_field == "horizon"
                    else "Input-pair resource multiplier D"), ylabel=ylabel)
     ax.set_xlim(positions[0] - 0.4 * spacing, positions[-1] + 0.4 * spacing)
@@ -127,7 +164,7 @@ def _draw_panel(ax, table_ax, rows, series, ylabel, x_field="distillation_pairs"
     table_ax.axis("off")
     table = table_ax.table(cellText=table_cells, rowLabels=series_labels,
                            colLabels=[f"{'t' if x_field == 'horizon' else 'D'}={value}"
-                                      for value in x_values],
+                                      for value in display_values],
                            cellLoc="center", rowLoc="left", loc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(7.5)
@@ -209,19 +246,22 @@ def plot_horizon_sensitivity(data, output):
                 ("original", metric, "Original dynamics", "#386cb0", "-"),
                 ("corrected", metric, "Corrected dynamics", "#e67e22", "-"),
             )
-            fig = plt.figure(figsize=(max(11, 4 + 1.6 * n_horizons), 7))
+            fig = plt.figure(figsize=(max(11, 4 + 1.6 * min(n_horizons, MAX_HORIZON_COLUMNS)), 7))
             grid = fig.add_gridspec(2, 1, height_ratios=[3.8, 0.9])
             ax = fig.add_subplot(grid[0])
             table_ax = fig.add_subplot(grid[1])
-            _draw_panel(ax, table_ax, rows, series, label, x_field="horizon")
+            _draw_panel(ax, table_ax, rows, series, label, x_field="horizon",
+                        max_columns=MAX_HORIZON_COLUMNS)
             shape = (f" ({values['rows']}×{values['columns']})"
                      if values["rows"] and values["columns"] else "")
             fig.suptitle(f"Horizon sensitivity: {values['graph_type']}{shape}, "
                          f"N={values['nodes']}, D={values['distillation_pairs']}; "
                          f"{values['scheduling']}", fontsize=11, y=0.98)
-            fig.text(0.5, 0.935,
-                     "95% Student-t intervals across independent replicates at each observation horizon",
-                     ha="center", fontsize=9)
+            uncertainty_note = "95% Student-t intervals across independent replicates at each observation horizon"
+            if n_horizons > MAX_HORIZON_COLUMNS:
+                uncertainty_note += (f"\nAll {n_horizons:,} checkpoints shown; shaded bands show intervals. "
+                                     f"Counts/labels at {MAX_HORIZON_COLUMNS} checkpoints; full data in horizon_summary.csv.")
+            fig.text(0.5, 0.935, uncertainty_note, ha="center", va="top", fontsize=9)
             fig.text(0.5, 0.02,
                      "Checkpoints along each run are correlated; they are not extra independent replicates. "
                      "No warm-up discarded.\n"
