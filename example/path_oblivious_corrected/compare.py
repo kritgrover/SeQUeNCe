@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 import random
 import statistics
+from time import perf_counter
 
 from scipy.stats import t as student_t
 
@@ -21,7 +22,7 @@ GROUP_FIELDS = ("graph_type", "nodes", "rows", "columns", "scheduling",
 METRICS = ("legacy_overhead", "corrected_overhead", "total_swaps",
            "total_pairs_consumed", "total_generated", "remaining_inventory")
 RAW_FIELDS = ("initial_inventory", "legacy_denominator", "corrected_denominator",
-              *METRICS, "steps", "stop_reason", "finished", "minimum_completed_met", "status")
+              *METRICS, "first_completion_step", "steps", "stop_reason", "finished", "minimum_completed_met", "status")
 SUMMARY_FIELDS = (*GROUP_FIELDS, "dynamics", "metric", "n_total", "n_finished",
                   "n_defined", "n_minimum_completed", "mean", "ci_low", "ci_high", "status")
 
@@ -201,6 +202,7 @@ def run_comparison(output, *, horizon, distillations=(1, 2), replicates=5,
                        **dict.fromkeys(RAW_FIELDS), "finished": False, "minimum_completed_met": False}
                 print(f"{run_id}: {horizon} iterations on {input_id}", flush=True)
                 simulation = None
+                started = perf_counter()
                 try:
                     simulation = InventorySimulation(
                         tape.graph, tape.consumers,
@@ -211,7 +213,7 @@ def run_comparison(output, *, horizon, distillations=(1, 2), replicates=5,
                     result = simulation.run()
                     row.update({field: getattr(result, field) for field in
                                 ("initial_inventory", "legacy_denominator", "corrected_denominator", *METRICS,
-                                 "steps", "stop_reason")})
+                                 "first_completion_step", "steps", "stop_reason")})
                     row["finished"] = result.steps == horizon and result.stop_reason == "fixed_horizon"
                     row["minimum_completed_met"] = result.total_pairs_consumed >= minimum_completed
                     row["status"] = ("unfinished" if not row["finished"] else
@@ -236,6 +238,7 @@ def run_comparison(output, *, horizon, distillations=(1, 2), replicates=5,
                         # Keep actual partial totals while finished=False prevents
                         # them from masquerading as full-horizon observations.
                         row.update(initial_inventory=simulation.initial_inventory,
+                                   first_completion_step=simulation.first_completion_step,
                                    total_swaps=int(simulation.total_swaps),
                                    total_generated=int(simulation.total_generated),
                                    total_pairs_consumed=int(simulation.total_pairs_consumed),
@@ -254,10 +257,12 @@ def run_comparison(output, *, horizon, distillations=(1, 2), replicates=5,
                                       queue_head=simulation.consumption_queue[0]
                                       if simulation.consumption_queue else None)
                     print(f"  FAILED: {detail['error']}", flush=True)
+                # Runtime is observational and deliberately excluded from replay-stable CSVs.
+                detail["wall_seconds"] = perf_counter() - started
                 result_rows.append(row)
                 write_json(output / "runs" / f"{run_id}.json", detail)
                 manifest["runs"].append({"run_id": run_id, "file": f"runs/{run_id}.json",
-                                         "status": row["status"]})
+                                         "status": row["status"], "wall_seconds": detail["wall_seconds"]})
                 tape.save(output / "inputs" / f"{input_id}.json")
                 write_csv(output / "results.csv", result_rows,
                           (*GROUP_FIELDS, "replicate", "input_id", "dynamics", *RAW_FIELDS))

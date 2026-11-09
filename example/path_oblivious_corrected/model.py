@@ -194,6 +194,7 @@ class SimulationResult:
     total_generated: int = 0
     initial_inventory: int = 0
     checkpoints: list = field(default_factory=list)
+    first_completion_step: int | None = None
 
     @property
     def author_metrics(self):
@@ -300,6 +301,7 @@ class InventorySimulation:
         self.completed_hops = Counter()
         self.completed_by_pair = {norm_edge(*edge): 0 for edge in self.consumption_edges}
         self.steps = 0
+        self.first_completion_step = None
         self.stop_reason = "step_limit"
         self.overlay = []
         self.efficiency = []
@@ -404,6 +406,8 @@ class InventorySimulation:
             self.completed_hops[path_length] += 1
             self.completed_by_pair[edge] += 1
             self.total_pairs_consumed += 1
+            if self.first_completion_step is None:
+                self.first_completion_step = self.steps
             self.total_bell_pairs -= self.distillation_pairs
             self._check_inventory()
 
@@ -488,7 +492,7 @@ class InventorySimulation:
                                 int(self.corrected_direct_path_sum),
                                 dict(self.completed_hops), self.completed_by_pair.copy(),
                                 int(self.total_generated), self.initial_inventory,
-                                self.checkpoints)
+                                self.checkpoints, self.first_completion_step)
 
 
 def run_simulation(graph, consumption_rates, *, profile, distillation_pairs,

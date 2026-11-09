@@ -41,6 +41,15 @@ def test_common_inputs_metrics_and_saved_replay(tmp_path, scheduling):
                 int(row["initial_inventory"]) + expected_generated
                 - (2*d - 1)*int(row["total_swaps"]) - d*int(row["total_pairs_consumed"]))
             details = json.loads((output / "runs" / f"r{replicate:03d}-d{d}-{row['dynamics']}.json").read_text())
+            first = details["first_completion_step"]
+            if int(row["total_pairs_consumed"]):
+                assert isinstance(first, int) and 1 <= first <= 24
+                assert int(row["first_completion_step"]) == first
+            else:
+                assert first is None and row["first_completion_step"] == ""
+            assert details["wall_seconds"] >= 0
+            entry = next(r for r in manifest["runs"] if r["run_id"] == details["run_id"])
+            assert entry["wall_seconds"] == details["wall_seconds"]
             histogram = {int(h): count for h, count in details["completed_hops"].items()}
             max_hops = max(histogram, default=1)
             legacy = generate_recursive_array(d, max_hops)

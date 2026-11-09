@@ -252,9 +252,36 @@ def test_undefined_ratios_keep_raw_totals(steps):
     assert result.legacy_denominator == result.corrected_denominator == 0
     assert result.legacy_overhead is None and result.corrected_overhead is None
     assert result.total_pairs_consumed == 0 if steps == 0 else result.total_pairs_consumed > 0
+    assert result.first_completion_step is None if steps == 0 else result.first_completion_step == 1
     assert result.stop_reason == "fixed_horizon"
     assert overhead(10, 0) is None
     assert overhead(0, 0) is None
+
+
+@pytest.mark.parametrize("first_step", [0, 3])
+def test_first_completion_step_is_preserved_after_later_completions(first_step):
+    simulation = InventorySimulation(path_graph(2, 1), {(0, 1): 1},
+                                     profile="distillation", distillation_pairs=1,
+                                     time_steps=0, stop_mode="fixed", seed=0)
+    assert simulation.first_completion_step is None
+    simulation.steps = first_step
+    simulation._consume()
+    assert simulation.total_pairs_consumed == 1
+    assert simulation.first_completion_step == first_step
+    simulation.steps += 5
+    simulation._generate()
+    simulation._consume()
+    assert simulation.total_pairs_consumed > 1
+    assert simulation.first_completion_step == first_step
+
+
+def test_no_completion_at_positive_horizon_has_no_first_completion():
+    # No initial inventory and no swap events: the remote endpoint pair cannot form.
+    result = run_simulation(path_graph(3, 0), {(0, 2): 1}, profile="finite",
+                            distillation_pairs=1, generation_rate=1, swap_rate=0,
+                            time_steps=5, stop_mode="fixed", seed=0)
+    assert result.steps == 5 and result.total_pairs_consumed == 0
+    assert result.first_completion_step is None
 
 
 def test_invalid_consumer_and_capacity_rejected():
