@@ -57,8 +57,36 @@ def test_stale_three_spoke_regression():
     original = before.copy()
     corrected = before.copy()
     assert attempt_original_swap(0, [1, 2, 3], original, 1, 0, 6) == (True, 3, 3)
+    assert original == {(0, 1): 0, (0, 2): 0, (0, 3): 0,
+                        (1, 2): 1, (1, 3): 1, (2, 3): 1}
     assert attempt_preferable_swap(0, [1, 2, 3], corrected, 1, 0, 6) == (True, 1, 5)
+    assert corrected == {(0, 1): 1, (0, 2): 1, (0, 3): 2, (1, 2): 1}
+    # The released routine next swaps (1, 3), using its stale candidate list.
+    # At that point the paper's inequality is 1 <= min(0, 1), which is false.
+    assert corrected.get((1, 3), 0) + 1 > min(corrected[0, 1] - 1,
+                                             corrected[0, 3] - 1)
     assert attempt_preferable_swap(0, [1, 2, 3], corrected, 1, 1, 5) == (False, 1, 5)
+
+
+def test_released_batch_skips_a_smaller_currently_preferable_output():
+    # Only (1, 2) and (3, 4) are initially preferable. Explicit neighbor order
+    # makes both the released batch and corrected tie-breaking deterministic.
+    before = {(0, 1): 5, (0, 2): 5, (0, 3): 5, (0, 4): 5,
+              (1, 2): 0, (3, 4): 2,
+              (1, 3): 100, (1, 4): 100, (2, 3): 100, (2, 4): 100}
+    neighbors = [1, 2, 3, 4]
+    original, corrected = before.copy(), before.copy()
+    total = sum(before.values())
+    assert attempt_original_swap(0, neighbors, original, 1, 0, total) == (True, 2, total - 2)
+    assert original == {**before, (0, 1): 4, (0, 2): 4, (0, 3): 4, (0, 4): 4,
+                        (1, 2): 1, (3, 4): 3}
+    assert attempt_preferable_swap(0, neighbors, corrected, 1, 0, total) == (True, 1, total - 1)
+    assert corrected == {**before, (0, 1): 4, (0, 2): 4, (1, 2): 1}
+    # Unlike the stale-preference case, both outputs still satisfy the rule.
+    # The released second choice (3, 4) has count 2; (1, 2) remains smaller at 1.
+    assert get_preferable_swaps(neighbors, corrected, 0, 1) == [((1, 2), 1), ((3, 4), 2)]
+    assert attempt_preferable_swap(0, neighbors, corrected, 1, 1, total - 1) == (True, 2, total - 2)
+    assert corrected == {**before, (0, 1): 3, (0, 2): 3, (1, 2): 2}
 
 
 @pytest.mark.parametrize("D", [1, 2, 3])

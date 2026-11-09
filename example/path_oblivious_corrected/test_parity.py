@@ -24,6 +24,7 @@ import numpy as np
 import pytest
 
 from example.path_oblivious_corrected.model import InventorySimulation as _Simulation, run_simulation as _run
+from example.path_oblivious_corrected.model import attempt_preferable_swap, generate_corrected_array
 from example.path_oblivious_corrected.sweeps import SOURCE_COMMIT, get_cases
 from example.path_oblivious_corrected.topology import create_graph
 
@@ -84,6 +85,45 @@ def load_author(profile, seed, *, record=None, consumer_count=35):
     exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
                  SCRIPTS[profile], "exec"), namespace)
     return namespace
+
+
+@pytest.mark.parametrize("profile", SCRIPTS)
+@pytest.mark.parametrize("case", ["stale_preference", "nonminimum_output"])
+def test_issue_examples_against_pinned_author_functions(profile, case):
+    """Reproduce each rule discrepancy in the released source itself."""
+    if case == "stale_preference":
+        before = {(0, 1): 2, (0, 2): 2, (0, 3): 2}
+        neighbors = [1, 2, 3]
+        expected_author = {(0, 1): 0, (0, 2): 0, (0, 3): 0,
+                           (1, 2): 1, (1, 3): 1, (2, 3): 1}
+        expected_corrected = {(0, 1): 1, (0, 2): 1, (0, 3): 2, (1, 2): 1}
+        author_swaps = 3
+    else:
+        before = {(0, 1): 5, (0, 2): 5, (0, 3): 5, (0, 4): 5,
+                  (1, 2): 0, (3, 4): 2,
+                  (1, 3): 100, (1, 4): 100, (2, 3): 100, (2, 4): 100}
+        neighbors = [1, 2, 3, 4]
+        expected_author = {**before, (0, 1): 4, (0, 2): 4, (0, 3): 4, (0, 4): 4,
+                           (1, 2): 1, (3, 4): 3}
+        expected_corrected = {**before, (0, 1): 4, (0, 2): 4, (1, 2): 1}
+        author_swaps = 2
+    author = load_author(profile, seed=0)
+    released, corrected = before.copy(), before.copy()
+    total = sum(before.values())
+    assert author["attempt_preferable_swap"](
+        0, neighbors, released, 1, 0, total) == (True, author_swaps, total - author_swaps)
+    assert released == expected_author
+    assert attempt_preferable_swap(
+        0, neighbors, corrected, 1, 0, total) == (True, 1, total - 1)
+    assert corrected == expected_corrected
+
+
+@pytest.mark.parametrize("profile", SCRIPTS)
+@pytest.mark.parametrize("hops,legacy,corrected", [(3, 8, 6), (4, 20, 10)])
+def test_denominator_examples_against_pinned_author_functions(profile, hops, legacy, corrected):
+    author = load_author(profile, seed=0)
+    assert author["generate_recursive_array"](2)[hops - 1] == legacy
+    assert generate_corrected_array(2, hops)[hops] == corrected
 
 
 def compare_trajectory(profile, graph, consumers, distillation, steps, seed=23):
